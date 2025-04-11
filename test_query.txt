@@ -1,0 +1,3 @@
+Explique-moi ce qu'est Pinecone et comment il fonctionne avec les vecteurs d'embedding.
+
+Qu'est-ce que LangChain et quelles sont ses principales fonctionnalités ?
