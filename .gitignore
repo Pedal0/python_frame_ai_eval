@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+
+# Data & DB
+chromadb_data/ # Usually you want to persist this, but maybe not commit it if large/sensitive
+# data/ # Add if your source data is large or sensitive
+
+# Output CSS (generated)
+static/css/style.css
+
+# .env files
+# This is a sensitive file that should not be shared publicly.
+.env

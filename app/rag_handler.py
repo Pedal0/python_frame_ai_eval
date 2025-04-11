@@ -1,0 +1,151 @@
+import os
+import json
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_chroma import Chroma
+from langchain.prompts import ChatPromptTemplate
+from langchain.schema.runnable import RunnablePassthrough
+from langchain.schema.output_parser import StrOutputParser
+from .utils import load_config
+
+# --- Load Configuration ---
+config = load_config()
+# Utiliser la clé API depuis le fichier .env via load_config()
+OPENAI_API_KEY = config['openai_api_key']
+# Afficher les premiers et derniers caractères de la clé pour vérification
+print(f"Using API Key: {OPENAI_API_KEY[:5]}...{OPENAI_API_KEY[-5:]}")
+
+OPENAI_GENERATION_MODEL = config['openai_generation_model']
+OPENAI_EMBEDDING_MODEL = config['openai_embedding_model']
+CHROMA_PERSIST_DIRECTORY = config['chroma_persist_directory']
+K_RETRIEVER = config['k_retriever'] # Number of documents to retrieve
+
+# --- Global Variables (Initialized Lazily) ---
+vectorstore = None
+retriever = None
+llm = None
+rag_chain = None
+
+def initialize_rag_components():
+    """
+    Initializes the RAG components (vectorstore, retriever, LLM, chain).
+    This function is designed to be called lazily when the first request comes in,
+    or explicitly at app startup if preferred.
+    """
+    global vectorstore, retriever, llm, rag_chain
+
+    if rag_chain: # Already initialized
+        return
+
+    print("Initializing RAG components...")
+
+    # 1. Initialize Embeddings
+    try:
+        embeddings = OpenAIEmbeddings(
+            model=OPENAI_EMBEDDING_MODEL,
+            openai_api_key=OPENAI_API_KEY
+        )
+    except Exception as e:
+        print(f"Error initializing OpenAI Embeddings: {e}")
+        raise
+
+    # 2. Load Persistent Vectorstore
+    if not os.path.exists(CHROMA_PERSIST_DIRECTORY):
+        raise FileNotFoundError(f"Chroma persistence directory not found at {CHROMA_PERSIST_DIRECTORY}. "
+                                "Please run 'populate_db.py' first.")
+    try:
+        vectorstore = Chroma(
+            persist_directory=CHROMA_PERSIST_DIRECTORY,
+            embedding_function=embeddings
+        )
+        print(f"Loaded Chroma vector store from: {CHROMA_PERSIST_DIRECTORY}")
+    except Exception as e:
+        print(f"Error loading Chroma vector store: {e}")
+        # This could be due to version mismatch, corrupted data, etc.
+        raise
+
+    # 3. Initialize Retriever
+    retriever = vectorstore.as_retriever(search_kwargs={"k": K_RETRIEVER})
+    print(f"Initialized Chroma retriever to fetch top {K_RETRIEVER} documents.")
+
+    # 4. Initialize LLM
+    try:
+        llm = ChatOpenAI(
+            model_name=OPENAI_GENERATION_MODEL,
+            openai_api_key=OPENAI_API_KEY,
+            temperature=0.3 # Adjust temperature for desired creativity/factuality
+        )
+        print(f"Initialized OpenAI LLM: {OPENAI_GENERATION_MODEL}")
+    except Exception as e:
+        print(f"Error initializing OpenAI LLM: {e}")
+        raise
+
+    # 6. Create the RAG Chain using LangChain Expression Language (LCEL)
+    # Modifié pour inclure les ID de documents réels dans le contexte
+    def format_docs(docs):
+        # Pour chaque document, ajouter l'ID et la source au début du contenu
+        formatted_docs = []
+        for idx, doc in enumerate(docs):
+            doc_id = doc.metadata.get('id', f'unknown-id-{idx}')
+            source_url = doc.metadata.get('source', 'unknown-source')
+            doc_content = doc.page_content
+            formatted_doc = f"Document ID: {doc_id}\nSource: {source_url}\nContent: {doc_content}\n---"
+            formatted_docs.append(formatted_doc)
+        
+        return "\n\n".join(formatted_docs)
+
+    # 5. Define the RAG Prompt Template avec des instructions plus précises
+    template = """You are an assistant for question-answering tasks.
+Use the following pieces of retrieved context to answer the question.
+Each document in the context includes its Document ID and Source URL, which you should use when citing sources.
+If you don't know the answer, just say that you don't know.
+Use three sentences maximum and keep the answer concise.
+
+After your answer, include a "Sources:" section that lists the Document ID and source URL of each document you used
+in your answer. Use the exact Document IDs provided in the context.
+Format it like this:
+Sources:
+- [actual-document-id] (source-url)
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:"""
+
+    prompt = ChatPromptTemplate.from_template(template)
+
+    rag_chain = (
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+        | StrOutputParser()
+    )
+    
+    print("RAG chain created successfully.")
+
+
+def get_rag_response(user_query: str) -> str:
+    """
+    Processes the user query using the RAG chain.
+
+    Args:
+        user_query: The question asked by the user.
+
+    Returns:
+        The response generated by the RAG chain, including sources.
+    """
+    # Ensure components are initialized (lazy initialization)
+    if not rag_chain:
+        initialize_rag_components()
+
+    print(f"Invoking RAG chain for query: '{user_query}'")
+    try:
+        response = rag_chain.invoke(user_query)
+        print(f"RAG chain response: '{response}'")
+        return response
+    except Exception as e:
+        print(f"Error invoking RAG chain: {e}")
+        # Consider returning a user-friendly error message
+        return "Sorry, I encountered an error while processing your request."
