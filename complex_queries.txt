@@ -1,0 +1,14 @@
+1. **Compréhension et intégration conceptuelle** : 
+Explique en détail comment LangChain et Pinecone peuvent être intégrés ensemble pour créer un système de recherche sémantique avancé, et quels avantages cette combinaison offre par rapport à une approche utilisant uniquement des bases de données traditionnelles. Illustre ta réponse avec un exemple concret d'application dans le domaine juridique.
+
+2. **Analyse comparative et synthèse** : 
+Compare les différentes chaînes (Chains) disponibles dans LangChain pour le traitement de documents (StuffDocumentsChain, RefineDocumentsChain, MapReduceDocumentsChain et MapRerankDocumentsChain). Quand devrais-je utiliser chacune de ces approches, et quels sont leurs avantages et inconvénients respectifs en matière de précision, de performance et d'utilisation de ressources ?
+
+3. **Résolution de problème technique** : 
+Je développe une application qui doit interroger une large base de connaissances techniques contenant des millions de documents. J'ai remarqué des latences importantes et une dégradation des performances à mesure que ma base de données vectorielle grossit. Comment puis-je optimiser mon système utilisant Pinecone et LangChain pour améliorer les temps de réponse et la pertinence des résultats ? Propose une architecture détaillée et des bonnes pratiques à suivre.
+
+4. **Application pratique et mise en œuvre** : 
+Créer un agent LangChain capable d'interagir avec une base de données Pinecone pour répondre à des questions sur des documents médicaux. Détaille les étapes d'implémentation, les outils nécessaires, et fournis un exemple de code pour mettre en place cet agent. Comment gérerais-tu les aspects de sécurité et de confidentialité des données médicales dans ce contexte ?
+
+5. **Évaluation critique et prospective** : 
+Quelles sont les limites actuelles de l'utilisation combinée de LangChain et Pinecone dans le cadre d'applications d'IA conversationnelle à grande échelle ? Identifie les défis techniques, éthiques et pratiques, puis propose des solutions ou alternatives innovantes qui pourraient émerger dans les prochaines années pour surmonter ces obstacles.
